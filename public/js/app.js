@@ -1,330 +1,348 @@
-// ============================================
-// ESTADO DE LA APLICACIÓN
-// ============================================
+// ==================== APLICACIÓN PRINCIPAL ====================
+import { supabase } from './config.js';
+import { logout } from './auth.js';
+import { exportToExcel } from './export.js';
 
-let people = [];
-let currentFilter = 'all';
+// Estado global de la aplicación
+let currentDay = 1;
+let personas = [];
+let asistencias = [];
 
-// ============================================
-// INICIALIZACIÓN
-// ============================================
-
-document.addEventListener('DOMContentLoaded', () => {
-    loadData();
-    renderCards();
-    updateStats();
-    initEventListeners();
+// ==================== INICIALIZACIÓN ====================
+document.addEventListener('DOMContentLoaded', async () => {
+    // Verificar si hay sesión activa
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session) {
+        // Si no está logueado, redirigir al login
+        window.location.href = 'index.html';
+        return;
+    }
+    
+    console.log('Usuario autenticado:', session.user.email);
+    
+    // Inicializar la aplicación
+    initializeApp();
 });
 
-// ============================================
-// EVENT LISTENERS
-// ============================================
-
-function initEventListeners() {
-    // Botón agregar persona
-    document.getElementById('addBtn').addEventListener('click', addPerson);
+function initializeApp() {
+    // Event Listeners
+    setupEventListeners();
     
-    // Enter en input para agregar
-    document.getElementById('personName').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            addPerson();
-        }
-    });
+    // Cargar datos iniciales
+    loadData();
+}
+
+// ==================== EVENT LISTENERS ====================
+function setupEventListeners() {
+    // Botones de día
+    document.getElementById('day1Btn').addEventListener('click', () => switchDay(1));
+    document.getElementById('day2Btn').addEventListener('click', () => switchDay(2));
+    
+    // Botón agregar persona
+    document.getElementById('addPersonBtn').addEventListener('click', openModal);
     
     // Botón exportar
-    document.getElementById('exportBtn').addEventListener('click', exportData);
+    document.getElementById('exportBtn').addEventListener('click', handleExport);
     
-    // Botón limpiar todo
-    document.getElementById('clearBtn').addEventListener('click', clearAll);
+    // Botón cerrar sesión
+    document.getElementById('logoutBtn').addEventListener('click', logout);
     
-    // Filtros
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const filter = e.target.dataset.filter;
-            setFilter(filter);
-        });
-    });
-}
-
-// ============================================
-// GESTIÓN DE DATOS (localStorage)
-// ============================================
-
-function loadData() {
-    const saved = localStorage.getItem('attendanceData');
-    if (saved) {
-        try {
-            people = JSON.parse(saved);
-        } catch (error) {
-            console.error('Error al cargar datos:', error);
-            people = [];
+    // Modal
+    document.getElementById('closeModal').addEventListener('click', closeModal);
+    document.getElementById('cancelBtn').addEventListener('click', closeModal);
+    document.getElementById('addPersonForm').addEventListener('submit', handleAddPerson);
+    
+    // Cerrar modal al hacer clic fuera
+    document.getElementById('addPersonModal').addEventListener('click', (e) => {
+        if (e.target.id === 'addPersonModal') {
+            closeModal();
         }
-    }
-}
-
-function saveData() {
-    localStorage.setItem('attendanceData', JSON.stringify(people));
-}
-
-// ============================================
-// CRUD OPERATIONS
-// ============================================
-
-function addPerson() {
-    const input = document.getElementById('personName');
-    const name = input.value.trim();
-    
-    if (name === '') {
-        alert('Por favor ingresa un nombre');
-        input.focus();
-        return;
-    }
-    
-    const newPerson = {
-        id: Date.now(),
-        name: name,
-        status: 'pending', // pending, attended, not-attended
-        timestamp: new Date().toISOString()
-    };
-    
-    people.unshift(newPerson); // Agregar al inicio
-    saveData();
-    input.value = '';
-    input.focus();
-    
-    renderCards();
-    updateStats();
-}
-
-function markAttendance(id, status) {
-    const person = people.find(p => p.id === id);
-    if (person) {
-        person.status = status;
-        person.lastUpdate = new Date().toISOString();
-        saveData();
-        renderCards();
-        updateStats();
-    }
-}
-
-function deletePerson(id) {
-    if (!confirm('¿Estás seguro de eliminar esta persona?')) {
-        return;
-    }
-    
-    people = people.filter(p => p.id !== id);
-    saveData();
-    renderCards();
-    updateStats();
-}
-
-function clearAll() {
-    if (people.length === 0) {
-        alert('No hay datos para limpiar');
-        return;
-    }
-    
-    if (!confirm('⚠️ ¿Estás seguro? Esto eliminará TODAS las personas registradas.')) {
-        return;
-    }
-    
-    if (!confirm('Confirmación final: Esta acción no se puede deshacer.')) {
-        return;
-    }
-    
-    people = [];
-    saveData();
-    currentFilter = 'all';
-    
-    // Resetear filtros visuales
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.classList.remove('active');
     });
-    document.querySelector('[data-filter="all"]').classList.add('active');
-    
-    renderCards();
-    updateStats();
 }
 
-// ============================================
-// FILTRADO
-// ============================================
-
-function setFilter(filter) {
-    currentFilter = filter;
+// ==================== CAMBIO DE DÍA ====================
+function switchDay(day) {
+    currentDay = day;
     
     // Actualizar botones activos
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    document.querySelector(`[data-filter="${filter}"]`).classList.add('active');
+    document.getElementById('day1Btn').classList.toggle('active', day === 1);
+    document.getElementById('day2Btn').classList.toggle('active', day === 2);
     
+    // Recargar tarjetas con el nuevo día
     renderCards();
 }
 
-function getFilteredPeople() {
-    if (currentFilter === 'all') {
-        return people;
+// ==================== CARGA DE DATOS ====================
+async function loadData() {
+    showLoading(true);
+    
+    try {
+        // Cargar personas
+        const { data: personasData, error: personasError } = await supabase
+            .from('personas')
+            .select('*')
+            .order('nombre');
+        
+        if (personasError) throw personasError;
+        personas = personasData || [];
+        
+        // Cargar asistencias
+        const { data: asistenciasData, error: asistenciasError } = await supabase
+            .from('asistencias')
+            .select('*');
+        
+        if (asistenciasError) throw asistenciasError;
+        asistencias = asistenciasData || [];
+        
+        // Renderizar
+        renderCards();
+        updateStats();
+        
+    } catch (error) {
+        console.error('Error cargando datos:', error);
+        alert('Error al cargar los datos. Por favor recarga la página.');
+    } finally {
+        showLoading(false);
     }
-    return people.filter(p => p.status === currentFilter);
 }
 
-// ============================================
-// RENDERIZADO
-// ============================================
-
+// ==================== RENDERIZADO DE TARJETAS ====================
 function renderCards() {
     const container = document.getElementById('cardsContainer');
     const emptyState = document.getElementById('emptyState');
     
-    const filteredPeople = getFilteredPeople();
-    
-    // Mostrar estado vacío si no hay personas
-    if (people.length === 0) {
-        container.innerHTML = '';
-        emptyState.classList.remove('hidden');
+    if (personas.length === 0) {
+        container.style.display = 'none';
+        emptyState.style.display = 'block';
         return;
     }
     
-    emptyState.classList.add('hidden');
+    container.style.display = 'grid';
+    emptyState.style.display = 'none';
     
-    // Mostrar mensaje si el filtro no tiene resultados
-    if (filteredPeople.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state">
-                <div class="empty-icon">🔍</div>
-                <h2>No hay resultados</h2>
-                <p>No hay personas con este estado</p>
-            </div>
-        `;
-        return;
-    }
+    container.innerHTML = personas.map(persona => {
+        const asistencia = asistencias.find(a => 
+            a.persona_id === persona.id && a.dia === currentDay
+        );
+        
+        return createPersonCard(persona, asistencia);
+    }).join('');
     
-    // Renderizar tarjetas
-    container.innerHTML = filteredPeople.map(person => createPersonCard(person)).join('');
-    
-    // Agregar event listeners a las tarjetas
-    attachCardEventListeners();
+    // Agregar event listeners a los botones de asistencia
+    setupAttendanceButtons();
 }
 
-function createPersonCard(person) {
-    const statusClass = person.status; // attended, not-attended, pending
-    const statusText = getStatusText(person.status);
+function createPersonCard(persona, asistencia) {
+    const hasEntrada = asistencia && asistencia.entrada;
+    const hasSalida = asistencia && asistencia.salida;
+    
+    const entradaTime = hasEntrada ? formatTime(asistencia.entrada) : 'Sin registrar';
+    const salidaTime = hasSalida ? formatTime(asistencia.salida) : 'Sin registrar';
     
     return `
-        <div class="person-card ${statusClass}">
-            <button class="delete-btn" data-id="${person.id}">×</button>
-            <div class="person-name">${escapeHtml(person.name)}</div>
-            <span class="person-status ${statusClass}">${statusText}</span>
-            <div class="person-actions">
-                <button 
-                    class="btn btn-primary" 
-                    data-id="${person.id}" 
-                    data-action="attended"
-                    ${person.status === 'attended' ? 'disabled' : ''}
-                >
-                    ✓ Asistió
-                </button>
-                <button 
-                    class="btn btn-danger" 
-                    data-id="${person.id}" 
-                    data-action="not-attended"
-                    ${person.status === 'not-attended' ? 'disabled' : ''}
-                >
-                    ✗ No asistió
-                </button>
+        <div class="person-card" data-person-id="${persona.id}">
+            <div class="card-header">
+                <h3 class="card-name">${persona.nombre}</h3>
+                <span class="card-ooad">📍 ${persona.ooad}</span>
+            </div>
+            <div class="card-body">
+                <div class="attendance-row">
+                    <div class="attendance-label">
+                        <span class="attendance-type">Entrada</span>
+                        <span class="attendance-time ${hasEntrada ? 'marked' : ''}">${entradaTime}</span>
+                    </div>
+                    <button 
+                        class="btn-attendance btn-entrada" 
+                        data-person-id="${persona.id}"
+                        data-type="entrada"
+                        ${hasEntrada ? 'disabled' : ''}
+                    >
+                        ${hasEntrada ? '✓ Registrada' : 'Registrar'}
+                    </button>
+                </div>
+                <div class="attendance-row">
+                    <div class="attendance-label">
+                        <span class="attendance-type">Salida</span>
+                        <span class="attendance-time ${hasSalida ? 'marked' : ''}">${salidaTime}</span>
+                    </div>
+                    <button 
+                        class="btn-attendance btn-salida" 
+                        data-person-id="${persona.id}"
+                        data-type="salida"
+                        ${hasSalida ? 'disabled' : ''}
+                    >
+                        ${hasSalida ? '✓ Registrada' : 'Registrar'}
+                    </button>
+                </div>
             </div>
         </div>
     `;
 }
 
-function attachCardEventListeners() {
-    // Botones de asistencia
-    document.querySelectorAll('[data-action]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const id = parseInt(e.target.dataset.id);
-            const action = e.target.dataset.action;
-            markAttendance(id, action);
-        });
-    });
-    
-    // Botones de eliminar
-    document.querySelectorAll('.delete-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const id = parseInt(e.target.dataset.id);
-            deletePerson(id);
-        });
+function formatTime(timestamp) {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString('es-MX', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: true 
     });
 }
 
-// ============================================
-// ESTADÍSTICAS
-// ============================================
-
-function updateStats() {
-    const total = people.length;
-    const attended = people.filter(p => p.status === 'attended').length;
-    const notAttended = people.filter(p => p.status === 'not-attended').length;
-    const pending = people.filter(p => p.status === 'pending').length;
-    
-    document.getElementById('totalCount').textContent = total;
-    document.getElementById('attendedCount').textContent = attended;
-    document.getElementById('notAttendedCount').textContent = notAttended;
-    document.getElementById('pendingCount').textContent = pending;
+// ==================== BOTONES DE ASISTENCIA ====================
+function setupAttendanceButtons() {
+    const buttons = document.querySelectorAll('.btn-attendance');
+    buttons.forEach(btn => {
+        btn.addEventListener('click', handleAttendanceClick);
+    });
 }
 
-// ============================================
-// EXPORTAR DATOS
-// ============================================
+async function handleAttendanceClick(e) {
+    const button = e.currentTarget;
+    const personId = button.dataset.personId;
+    const type = button.dataset.type; // 'entrada' o 'salida'
+    
+    button.disabled = true;
+    button.textContent = 'Registrando...';
+    
+    try {
+        await registerAttendance(personId, type);
+        
+        // Recargar datos
+        await loadData();
+        
+    } catch (error) {
+        console.error('Error registrando asistencia:', error);
+        alert('Error al registrar asistencia. Inténtalo de nuevo.');
+        button.disabled = false;
+        button.textContent = 'Registrar';
+    }
+}
 
-function exportData() {
-    if (people.length === 0) {
-        alert('No hay datos para exportar');
-        return;
+async function registerAttendance(personId, type) {
+    const now = new Date().toISOString();
+    
+    // Buscar si ya existe un registro de asistencia para esta persona y día
+    const { data: existing, error: searchError } = await supabase
+        .from('asistencias')
+        .select('*')
+        .eq('persona_id', personId)
+        .eq('dia', currentDay)
+        .single();
+    
+    if (searchError && searchError.code !== 'PGRST116') { // PGRST116 = no rows found
+        throw searchError;
     }
     
-    const dataStr = JSON.stringify(people, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
+    if (existing) {
+        // Actualizar registro existente
+        const updateData = {};
+        updateData[type] = now;
+        
+        const { error: updateError } = await supabase
+            .from('asistencias')
+            .update(updateData)
+            .eq('id', existing.id);
+        
+        if (updateError) throw updateError;
+    } else {
+        // Crear nuevo registro
+        const insertData = {
+            persona_id: personId,
+            dia: currentDay,
+            [type]: now
+        };
+        
+        const { error: insertError } = await supabase
+            .from('asistencias')
+            .insert(insertData);
+        
+        if (insertError) throw insertError;
+    }
+}
+
+// ==================== MODAL AGREGAR PERSONA ====================
+function openModal() {
+    const modal = document.getElementById('addPersonModal');
+    modal.classList.add('active');
+    document.getElementById('personName').focus();
+}
+
+function closeModal() {
+    const modal = document.getElementById('addPersonModal');
+    modal.classList.remove('active');
+    document.getElementById('addPersonForm').reset();
+    document.getElementById('formError').style.display = 'none';
+}
+
+async function handleAddPerson(e) {
+    e.preventDefault();
     
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `asistencias_${getFormattedDate()}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const nombre = document.getElementById('personName').value.trim();
+    const ooad = document.getElementById('personOOAD').value;
+    const formError = document.getElementById('formError');
     
-    URL.revokeObjectURL(url);
+    formError.style.display = 'none';
+    
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Guardando...';
+    
+    try {
+        // Insertar nueva persona
+        const { data, error } = await supabase
+            .from('personas')
+            .insert([{ nombre, ooad }])
+            .select();
+        
+        if (error) throw error;
+        
+        console.log('Persona agregada:', data);
+        
+        // Cerrar modal y recargar datos
+        closeModal();
+        await loadData();
+        
+    } catch (error) {
+        console.error('Error agregando persona:', error);
+        formError.style.display = 'block';
+        formError.textContent = 'Error al agregar persona. Inténtalo de nuevo.';
+        
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Guardar';
+    }
 }
 
-// ============================================
-// UTILIDADES
-// ============================================
-
-function getStatusText(status) {
-    const statusMap = {
-        'pending': 'Pendiente',
-        'attended': 'Asistió',
-        'not-attended': 'No asistió'
-    };
-    return statusMap[status] || 'Pendiente';
+// ==================== ESTADÍSTICAS ====================
+function updateStats() {
+    // Total de personas
+    document.getElementById('totalPersonas').textContent = personas.length;
+    
+    // Contar entradas y salidas del día actual
+    const asistenciasHoy = asistencias.filter(a => a.dia === currentDay);
+    const totalEntradas = asistenciasHoy.filter(a => a.entrada).length;
+    const totalSalidas = asistenciasHoy.filter(a => a.salida).length;
+    
+    document.getElementById('totalEntradas').textContent = totalEntradas;
+    document.getElementById('totalSalidas').textContent = totalSalidas;
 }
 
-function escapeHtml(text) {
-    const map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-    };
-    return text.replace(/[&<>"']/g, m => map[m]);
+// ==================== EXPORTAR ====================
+async function handleExport() {
+    showLoading(true);
+    
+    try {
+        await exportToExcel(personas, asistencias);
+    } catch (error) {
+        console.error('Error exportando:', error);
+        alert('Error al exportar. Inténtalo de nuevo.');
+    } finally {
+        showLoading(false);
+    }
 }
 
-function getFormattedDate() {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+// ==================== UTILIDADES ====================
+function showLoading(show) {
+    const loading = document.getElementById('loading');
+    loading.style.display = show ? 'flex' : 'none';
 }
