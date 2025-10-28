@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     if (session) {
         // Si ya está logueado, redirigir al dashboard
-        window.location.href = 'dashboard.html';
+        window.location.href = '/public/views/dashboard.html';
         return;
     }
     
