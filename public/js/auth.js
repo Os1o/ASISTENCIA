@@ -61,7 +61,7 @@ function setupLoginForm() {
             console.log('Login exitoso:', data);
             
             // Redirigir al dashboard
-            window.location.href = '/public/views/dashboard.html';
+            window.location.href = 'public/views/dashboard.html';
             
         } catch (error) {
             console.error('Error en login:', error);
