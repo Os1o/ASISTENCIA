@@ -1,7 +1,7 @@
 // ==================== APLICACIÓN PRINCIPAL ====================
-import { supabase } from 'config.js';
-import { logout } from 'auth.js';
-import { exportToExcel } from 'export.js';
+import { supabase } from './config.js';
+import { logout } from './auth.js';
+import { exportToExcel } from './export.js';
 
 // Estado global de la aplicación
 let currentDay = 1;
