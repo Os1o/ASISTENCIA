@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Control de Asistencia</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="dashboard-page">
+    <header class="header">
+        <div class="header-content">
+            <h1>Control de Asistencia</h1>
+            <div class="header-actions">
+                <div class="day-selector">
+                    <button id="day1Btn" class="btn btn-day active" data-day="1">Día 1</button>
+                    <button id="day2Btn" class="btn btn-day" data-day="2">Día 2</button>
+                </div>
+                <button id="addPersonBtn" class="btn btn-secondary">
+                    <span>➕</span> Agregar Persona
+                </button>
+                <button id="exportBtn" class="btn btn-gold">
+                    <span>📊</span> Exportar a Excel
+                </button>
+                <button id="logoutBtn" class="btn btn-outline">
+                    Cerrar Sesión
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="stats-bar">
+            <div class="stat-item">
+                <span class="stat-label">Total Personas:</span>
+                <span class="stat-value" id="totalPersonas">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Entradas Registradas:</span>
+                <span class="stat-value" id="totalEntradas">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Salidas Registradas:</span>
+                <span class="stat-value" id="totalSalidas">0</span>
+            </div>
+        </div>
+
+        <div id="cardsContainer" class="cards-container">
+            <!-- Las tarjetas se generarán dinámicamente aquí -->
+        </div>
+
+        <div id="emptyState" class="empty-state">
+            <p>No hay personas registradas aún</p>
+            <button class="btn btn-primary" onclick="document.getElementById('addPersonBtn').click()">
+                Agregar Primera Persona
+            </button>
+        </div>
+    </main>
+
+    <!-- Modal para Agregar Persona -->
+    <div id="addPersonModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Agregar Nueva Persona</h2>
+                <button class="close-modal" id="closeModal">&times;</button>
+            </div>
+            <form id="addPersonForm">
+                <div class="form-group">
+                    <label for="personName">Nombre Completo *</label>
+                    <input 
+                        type="text" 
+                        id="personName" 
+                        name="personName" 
+                        required
+                        placeholder="Ej: Juan Pérez García"
+                    >
+                </div>
+                
+                <div class="form-group">
+                    <label for="personOOAD">OOAD (Estado) *</label>
+                    <select id="personOOAD" name="personOOAD" required>
+                        <option value="">Seleccione un estado...</option>
+                        <option value="Aguascalientes">Aguascalientes</option>
+                        <option value="Baja California">Baja California</option>
+                        <option value="Baja California Sur">Baja California Sur</option>
+                        <option value="Campeche">Campeche</option>
+                        <option value="Chiapas">Chiapas</option>
+                        <option value="Chihuahua">Chihuahua</option>
+                        <option value="Ciudad de México">Ciudad de México</option>
+                        <option value="Coahuila">Coahuila</option>
+                        <option value="Colima">Colima</option>
+                        <option value="Durango">Durango</option>
+                        <option value="Estado de México">Estado de México</option>
+                        <option value="Guanajuato">Guanajuato</option>
+                        <option value="Guerrero">Guerrero</option>
+                        <option value="Hidalgo">Hidalgo</option>
+                        <option value="Jalisco">Jalisco</option>
+                        <option value="Michoacán">Michoacán</option>
+                        <option value="Morelos">Morelos</option>
+                        <option value="Nayarit">Nayarit</option>
+                        <option value="Nuevo León">Nuevo León</option>
+                        <option value="Oaxaca">Oaxaca</option>
+                        <option value="Puebla">Puebla</option>
+                        <option value="Querétaro">Querétaro</option>
+                        <option value="Quintana Roo">Quintana Roo</option>
+                        <option value="San Luis Potosí">San Luis Potosí</option>
+                        <option value="Sinaloa">Sinaloa</option>
+                        <option value="Sonora">Sonora</option>
+                        <option value="Tabasco">Tabasco</option>
+                        <option value="Tamaulipas">Tamaulipas</option>
+                        <option value="Tlaxcala">Tlaxcala</option>
+                        <option value="Veracruz">Veracruz</option>
+                        <option value="Yucatán">Yucatán</option>
+                        <option value="Zacatecas">Zacatecas</option>
+                    </select>
+                </div>
+
+                <div id="formError" class="error-message" style="display: none;"></div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-outline" id="cancelBtn">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="loading" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>
