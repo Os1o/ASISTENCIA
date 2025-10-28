@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     if (session) {
         // Si ya está logueado, redirigir al dashboard
-        window.location.href = '/public/views/dashboard.html';
+        window.location.href = 'public/views/dashboard.html';
         return;
     }
     
@@ -91,7 +91,7 @@ export async function logout() {
         if (error) throw error;
         
         // Redirigir al login
-        window.location.href = 'index.html';
+        window.location.href = '../../index.html';
     } catch (error) {
         console.error('Error al cerrar sesión:', error);
         alert('Error al cerrar sesión');

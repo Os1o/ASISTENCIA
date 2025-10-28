@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Control de Asistencia</title>
-    <link rel="stylesheet" href="/public/css/styles.css">
+    <link rel="stylesheet" href="../css/styles.css">
 </head>
+
 <body class="dashboard-page">
     <header class="header">
         <div class="header-content">
@@ -66,15 +68,9 @@
             <form id="addPersonForm">
                 <div class="form-group">
                     <label for="personName">Nombre Completo *</label>
-                    <input 
-                        type="text" 
-                        id="personName" 
-                        name="personName" 
-                        required
-                        placeholder="Ej: Juan Pérez García"
-                    >
+                    <input type="text" id="personName" name="personName" required placeholder="Ej: Juan Pérez García">
                 </div>
-                
+
                 <div class="form-group">
                     <label for="personOOAD">OOAD (Estado) *</label>
                     <select id="personOOAD" name="personOOAD" required>
@@ -115,7 +111,7 @@
                 </div>
 
                 <div id="formError" class="error-message" style="display: none;"></div>
-                
+
                 <div class="modal-actions">
                     <button type="button" class="btn btn-outline" id="cancelBtn">Cancelar</button>
                     <button type="submit" class="btn btn-primary">Guardar</button>
@@ -131,8 +127,7 @@
     <!-- Librerías externas primero -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    
-    <!-- Nuestra aplicación (app.js importa lo que necesita) -->
-    <script type="module" src="public/js/app.js"></script>
+    <script type="module" src="../js/app.js"></script>
 </body>
+
 </html>

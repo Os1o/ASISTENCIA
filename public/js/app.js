@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     if (!session) {
         // Si no está logueado, redirigir al login
-        window.location.href = 'index.html';
+        window.location.href = '../../index.html';
         return;
     }
     
